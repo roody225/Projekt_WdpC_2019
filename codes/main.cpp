@@ -13,6 +13,7 @@ unsigned int rec[]={
 	0, 3, 2
 };
 int pom[8]={-1, 0, 1, 0, 0, -1, 0, 1};
+bool buttons[10];
 const int part=10, MAPSIZE=1005;
 double camx=-1.0, camy=1.0, xchar, ychar, charmove=1.0/part, charspace=1.2, enemyspace=1.5, checkpointspace=1.0, boxspace=1.0, holespace=1.0, prevTime;
 int mapn, mapm, gamex, gamey, posx=0, posy=0, enemies=0, checkpoints=0, activecheckpoint, boxes=0, holes=0, holesfilled=0, questnr=3;
@@ -63,6 +64,7 @@ bool check_quest();
 void destroy_doors(int a, int b);
 void swap_quest(int a);
 void set_quest();
+bool button_machine(GLFWwindow *window, int a);
 
 int main()
 {
@@ -127,18 +129,24 @@ int main()
 	load_texture("../pics/holefill.jpg");
 	
 	glActiveTexture(GL_TEXTURE11);
-	load_texture("../pics/3.jpg");
+	load_texture("../pics/1.jpg");
 	
 	glActiveTexture(GL_TEXTURE12);
-	load_texture("../pics/4.jpg");
+	load_texture("../pics/2.jpg");
 	
 	glActiveTexture(GL_TEXTURE13);
-	load_texture("../pics/5.jpg");
+	load_texture("../pics/3.jpg");
 	
 	glActiveTexture(GL_TEXTURE14);
-	load_texture("../pics/6.jpg");
+	load_texture("../pics/4.jpg");
 	
 	glActiveTexture(GL_TEXTURE15);
+	load_texture("../pics/5.jpg");
+	
+	glActiveTexture(GL_TEXTURE16);
+	load_texture("../pics/6.jpg");
+	
+	glActiveTexture(GL_TEXTURE17);
 	load_texture("../pics/7.jpg");
 	
 	ifstream map;
@@ -245,15 +253,28 @@ void swap_quest(int a)
 		quest[i+1]=pom;
 	}	
 }
+bool button_machine(GLFWwindow *window, int a)
+{
+	int key=GLFW_KEY_0+a;
+	if(!buttons[a])
+	{
+		if(glfwGetKey(window, key) == GLFW_PRESS)
+		{
+			buttons[a]=1;
+		}
+		return buttons[a];
+	}
+	else
+	{
+		if(glfwGetKey(window, key) == GLFW_RELEASE)
+		{
+			buttons[a]=0;
+		}
+		return 0;
+	}
+}
 void processDoors(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
 {
-	/*
-	for(int i=0; i<questnr; i++)
-	{
-		cerr<<quest[i]<<" ";
-	}
-	cerr<<"\n";
-	*/
 	double DIFF=0.7;
 	for(int i=ychar-charspace+DIFF; i<ychar+charspace-DIFF; i++)
 	{
@@ -285,32 +306,11 @@ void processDoors(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
 					{
 						destroy_doors(i+pom[k], j+pom[k+1]);
 					}
-					if(glfwGetTime()-prevTime>0.1)
+					for(int i=1; i<8; i++)
 					{
-						prevTime=glfwGetTime();
-						if(glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+						if(button_machine(window, i))
 						{
-							swap_quest(0);
-						}
-						if(glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-						{
-							swap_quest(1);
-						}
-						if(glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-						{
-							swap_quest(2);
-						}
-						if(glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-						{
-							swap_quest(3);
-						}
-						if(glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-						{
-							swap_quest(4);
-						}
-						if(glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-						{
-							swap_quest(5);
+							swap_quest(i-1);
 						}
 					}
 				}
@@ -336,7 +336,6 @@ bool check_quest()
 }
 void set_quest()
 {
-	cerr<<"***************\n";
 	questnr++;
 	if(questnr%7==1)
 	{
@@ -355,7 +354,6 @@ void set_quest()
 		{
 			int pom=glfwGetTime()*10000+i;
 			pom%=(questnr-1);
-			cerr<<pom<<"\n";
 			int pom0=quest[pom];
 			quest[pom]=quest[pom+1];
 			quest[pom+1]=pom0;
@@ -364,17 +362,12 @@ void set_quest()
 }
 bool go_quest(unsigned int VAO, unsigned int VBO, double size)
 {
+	
 	if(check_quest())
 	{	
 		set_quest();
 		return 1;
 	}
-
-	glActiveTexture(GL_TEXTURE9);
-	load_texture("../pics/1.jpg");
-	
-	glActiveTexture(GL_TEXTURE10);
-	load_texture("../pics/2.jpg");
 
 	double F=0.05, FIELD=2*size/7;
 	
@@ -396,17 +389,11 @@ bool go_quest(unsigned int VAO, unsigned int VBO, double size)
 			glBindBuffer(GL_ARRAY_BUFFER, VBO);
 			glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
 			glBindVertexArray(VAO);
-			glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 8+quest[j]);
+			glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 10+quest[j]);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		}
 	}
 
-	glActiveTexture(GL_TEXTURE9);
-	load_texture("../pics/hole.jpg");
-	
-	glActiveTexture(GL_TEXTURE10);
-	load_texture("../pics/holefill.jpg");
-	
 	return 0;
 }
 void processHoles(unsigned int VAO, unsigned int VBO)
