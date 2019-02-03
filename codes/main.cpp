@@ -13,10 +13,10 @@ unsigned int rec[]={
 	0, 3, 2
 };
 int pom[8]={-1, 0, 1, 0, 0, -1, 0, 1};
-bool buttons[10];
+bool buttons[20], questshow, controlsshow;
 const int part=10, MAPSIZE=1005;
-double camx=-1.0, camy=1.0, xchar, ychar, charmove=1.0/part, charspace=1.2, enemyspace=1.5, checkpointspace=1.0, boxspace=1.0, holespace=1.0, prevTime;
-int mapn, mapm, gamex, gamey, posx=0, posy=0, enemies=0, checkpoints=0, activecheckpoint, boxes=0, holes=0, holesfilled=0, questnr=3;
+double camx=-1.0, camy=1.0, xchar, ychar, charmove=1.0/part, charspace=1.2, enemyspace=1.5, checkpointspace=1.0, boxspace=1.0, holespace=1.0;
+int mapn, mapm, gamex, gamey, posx=0, posy=0, enemies=0, checkpoints=0, activecheckpoint, boxes=0, holes=0, holesfilled=0, questnr=3, activedoorsx, activedoorsy, mainmenushow=1, pauseshow=0;
 unsigned int shaderProgram, shaderProgramNoTex;
 char gamemap[MAPSIZE][MAPSIZE];
 double enemy[1005][2];
@@ -65,6 +65,12 @@ void destroy_doors(int a, int b);
 void swap_quest(int a);
 void set_quest();
 bool button_machine(GLFWwindow *window, int a);
+bool check_doors_near_you();
+void processPause(unsigned int VAO, unsigned int VBO, GLFWwindow *window);
+void processMainMenu(unsigned int VAO, unsigned int VBO, GLFWwindow *window);
+void new_game();
+void save_game();
+bool load_game();
 
 int main()
 {
@@ -149,6 +155,97 @@ int main()
 	glActiveTexture(GL_TEXTURE17);
 	load_texture("../pics/7.jpg");
 	
+	glActiveTexture(GL_TEXTURE18);
+	load_texture("../pics/console.jpg");
+	
+	glActiveTexture(GL_TEXTURE19);
+	load_texture("../pics/pause1.jpg");
+	
+	glActiveTexture(GL_TEXTURE20);
+	load_texture("../pics/pause2.jpg");
+	
+	glActiveTexture(GL_TEXTURE21);
+	load_texture("../pics/pause3.jpg");
+	
+	glActiveTexture(GL_TEXTURE22);
+	load_texture("../pics/castle1.jpg");
+	
+	glActiveTexture(GL_TEXTURE23);
+	load_texture("../pics/castle2.jpg");
+	
+	glActiveTexture(GL_TEXTURE24);
+	load_texture("../pics/castle3.jpg");
+	
+	glActiveTexture(GL_TEXTURE25);
+	load_texture("../pics/castle4.jpg");
+	
+	glActiveTexture(GL_TEXTURE26);
+	load_texture("../pics/controls.jpg");
+	
+	glActiveTexture(GL_TEXTURE27);
+	load_texture("../pics/save.jpg");
+		
+	while(!glfwWindowShouldClose(window))
+	{	
+		glUseProgram(shaderProgram);
+		if(mainmenushow)
+		{
+			processMainMenu(VAO_rec, VBO_rec, window);
+			glfwSwapBuffers(window);
+			glfwPollEvents();
+			continue;
+		}
+		if(!pauseshow)
+		{
+			for(int i=0; i<2*part+1; i++)
+			{
+				for(int j=0; j<2*part+1; j++)
+				{
+					print_field(gamemap[gamey+i][gamex+j], camx , camy, i, j, VAO_rec, VBO_rec);
+					visited[gamey+i][gamex+j]=true;
+				}
+			}
+			processHoles(VAO_rec, VBO_rec);
+		
+			processCheckpoints(VAO_rec, VBO_rec);
+		
+			processBoxes(VAO_rec, VBO_rec);
+
+			if(processEnemies(VAO_rec, VBO_rec))
+			{
+				back_to_checkpoint(VAO_rec, VBO_rec, window);
+			}
+		
+			print_object('C', camx, camy, xchar, ychar, VAO_rec, VBO_rec, charspace);
+
+			processDoors(VAO_rec, VBO_rec, window);	
+		
+			processInput(window, charmove, VAO_rec, VBO_rec);
+			
+			if(button_machine(window, 7))
+				pauseshow=1;
+		}
+		else
+		{
+			processPause(VAO_rec, VBO_rec, window);
+		}
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+	
+	glfwTerminate();
+	return 0;
+}
+void new_game()
+{
+	enemies=0, boxes=0, holes=0, holesfilled=0, checkpoints=0, questnr=3;
+	for(int i=0; i<MAPSIZE; i++)
+	{
+		for(int j=0; j<MAPSIZE; j++)
+		{
+			visited[i][j]=0;
+		}
+	}
 	ifstream map;
 	map.open("../pics/test_map.txt");
 	map>>mapm>>mapn>>gamex>>gamey;
@@ -196,43 +293,168 @@ int main()
 		}
 	}
 	set_checkpoint();
-	prevTime=glfwGetTime();
 	set_quest();
-		
-	while(!glfwWindowShouldClose(window))
-	{	
-		glUseProgram(shaderProgram);
-		for(int i=0; i<2*part+1; i++)
-		{
-			for(int j=0; j<2*part+1; j++)
-			{
-				print_field(gamemap[gamey+i][gamex+j], camx , camy, i, j, VAO_rec, VBO_rec);
-				visited[gamey+i][gamex+j]=true;
-			}
-		}
-		processHoles(VAO_rec, VBO_rec);
-		
-		processCheckpoints(VAO_rec, VBO_rec);
-		
-		processBoxes(VAO_rec, VBO_rec);
-
-		if(processEnemies(VAO_rec, VBO_rec))
-		{
-			back_to_checkpoint(VAO_rec, VBO_rec, window);
-		}
-		
-		print_object('C', camx, camy, xchar, ychar, VAO_rec, VBO_rec, charspace);
-
-		processDoors(VAO_rec, VBO_rec, window);	
-		
-		processInput(window, charmove, VAO_rec, VBO_rec);
-		
-		glfwSwapBuffers(window);
-		glfwPollEvents();
+	map.close();
+}
+void processMainMenu(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
+{
+	if(button_machine(window, 8))
+	{
+		mainmenushow--;
+		if(!mainmenushow)
+			mainmenushow=4;
 	}
+	if(button_machine(window, 9))
+	{
+		mainmenushow++;
+		if(mainmenushow==5)
+			mainmenushow=1;
+	}
+	if(button_machine(window, 10))
+	{
+		if(mainmenushow==1)
+		{
+			mainmenushow=0;
+			new_game();
+		}
+		if(mainmenushow==4)
+		{
+			glfwSetWindowShouldClose(window, true);
+		}
+		if(mainmenushow==3)
+		{
+			controlsshow=1;
+		}
+		if(mainmenushow==2)
+		{
+			if(load_game())
+				mainmenushow=0;
+		}
+	}
+	if(controlsshow && button_machine(window, 11))
+	{
+		controlsshow=0;
+	}
+	vrec[0]=-1.0;
+	vrec[1]=1.0;
+	vrec[5]=-1.0;
+	vrec[6]=-1.0;
+	vrec[10]=1.0;
+	vrec[11]=-1.0;
+	vrec[15]=1.0;
+	vrec[16]=1.0;
 	
-	glfwTerminate();
-	return 0;
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
+	glBindVertexArray(VAO);
+	glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 21+mainmenushow+2*(int)controlsshow);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+void processPause(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
+{
+	if(button_machine(window, 8))
+	{
+		pauseshow--;
+		if(!pauseshow)
+			pauseshow=3;
+	}
+	if(button_machine(window, 9))
+	{
+		pauseshow++;
+		if(pauseshow==4)
+			pauseshow=1;
+	}
+	bool flag=0;
+	if(button_machine(window, 10))
+	{
+		if(pauseshow==1)
+		{
+			pauseshow=0;
+		}
+		if(pauseshow==3)
+		{
+			mainmenushow=1;
+			pauseshow=0;
+		}
+		if(pauseshow==2)
+		{
+			flag=1;
+			save_game();			
+		}
+	}
+	vrec[0]=-1.0;
+	vrec[1]=1.0;
+	vrec[5]=-1.0;
+	vrec[6]=-1.0;
+	vrec[10]=1.0;
+	vrec[11]=-1.0;
+	vrec[15]=1.0;
+	vrec[16]=1.0;
+	
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
+	glBindVertexArray(VAO);
+	glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 18+pauseshow);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	if(flag)
+	{
+		vrec[0]=-0.6;
+		vrec[1]=0.3;
+		vrec[5]=-0.6;
+		vrec[6]=-0.3;
+		vrec[10]=0.6;
+		vrec[11]=-0.3;
+		vrec[15]=0.6;
+		vrec[16]=0.3;
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
+		glBindVertexArray(VAO);
+		glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 27);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glfwSwapBuffers(window);
+		double pm=glfwGetTime();
+		while(glfwGetTime()-pm<0.8){}
+	}
+}
+void save_game()
+{
+	ofstream save;
+	save.open("../pics/savedgame.txt");
+	save<<mapm<<" "<<mapn<<" "<<gamex<<" "<<gamey<<"\n";
+	for(int i=0; i<mapn; i++)
+	{
+		for(int j=0; j<mapm; j++)
+		{
+			save<<gamemap[i][j];
+		}
+		save<<"\n";
+	}
+	save<<camx<<" "<<camy<<" "<<xchar<<" "<<ychar<<" "<<posx<<" "<<posy<<"\n";
+	save<<enemies<<" "<<checkpoints<<" "<<activecheckpoint<<" "<<boxes<<" "<<holes<<" "<<holesfilled<<" "<<questnr<<"\n";
+	for(int i=0; i<enemies; i++)
+	{
+		save<<enemy[i][0]<<" "<<enemy[i][1]<<" "<<enemydir[i]<<"\n";
+	}
+	for(int i=0; i<checkpoints; i++)
+	{
+		save<<checkpoint[i][0]<<" "<<checkpoint[i][1]<<"\n";
+	}
+	for(int i=0; i<boxes; i++)
+	{
+		save<<box[i][0]<<" "<<box[i][1]<<"\n";
+	}
+	for(int i=0; i<holes; i++)
+	{
+		save<<hole[i][0]<<" "<<hole[i][1]<<"\n";
+	}
+	for(int i=0; i<holesfilled; i++)
+	{
+		save<<holefilled[i][0]<<" "<<holefilled[i][1]<<"\n";
+	}
+	for(int i=0; i<questnr; i++)
+	{
+		save<<quest[i]<<" ";
+	}
 }
 void destroy_doors(int a, int b)
 {
@@ -243,6 +465,53 @@ void destroy_doors(int a, int b)
 		if(gamemap[x][y]=='D')
 			destroy_doors(x, y);
 	}
+}
+bool load_game()
+{
+	ifstream save;
+	save.open("../pics/savedgame.txt");
+	int pom;
+	save>>pom;
+	if(mapm==EOF)
+	{
+		return 0;
+	}
+	mapm=pom;
+	save>>mapn>>gamex>>gamey;
+	for(int i=0; i<mapn; i++)
+	{
+		for(int j=0; j<mapm; j++)
+		{
+			save>>gamemap[i][j];
+		}
+	}
+	save>>camx>>camy>>xchar>>ychar>>posx>>posy;
+	save>>enemies>>checkpoints>>activecheckpoint>>boxes>>holes>>holesfilled>>questnr;
+	for(int i=0; i<enemies; i++)
+	{
+		save>>enemy[i][0]>>enemy[i][1]>>enemydir[i];
+	}
+	for(int i=0; i<checkpoints; i++)
+	{
+		save>>checkpoint[i][0]>>checkpoint[i][1];
+	}
+	for(int i=0; i<boxes; i++)
+	{
+		save>>box[i][0]>>box[i][1];
+	}
+	for(int i=0; i<holes; i++)
+	{
+		save>>hole[i][0]>>hole[i][1];
+	}
+	for(int i=0; i<holesfilled; i++)
+	{
+		save>>holefilled[i][0]>>holefilled[i][1];
+	}
+	for(int i=0; i<questnr; i++)
+	{
+		save>>quest[i];
+	}
+	return 1;
 }
 void swap_quest(int a)
 {
@@ -256,6 +525,14 @@ void swap_quest(int a)
 bool button_machine(GLFWwindow *window, int a)
 {
 	int key=GLFW_KEY_0+a;
+	switch (a){
+		case 0: key=GLFW_KEY_I; break;
+		case 7: key=GLFW_KEY_ESCAPE; break;
+		case 8: key=GLFW_KEY_UP; break;
+		case 9: key=GLFW_KEY_DOWN; break;
+		case 10: key=GLFW_KEY_ENTER; break;
+		case 11: key=GLFW_KEY_ESCAPE; break;
+	}
 	if(!buttons[a])
 	{
 		if(glfwGetKey(window, key) == GLFW_PRESS)
@@ -273,9 +550,9 @@ bool button_machine(GLFWwindow *window, int a)
 		return 0;
 	}
 }
-void processDoors(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
+bool check_doors_near_you()
 {
-	double DIFF=0.7;
+	double DIFF=0.85;
 	for(int i=ychar-charspace+DIFF; i<ychar+charspace-DIFF; i++)
 	{
 		for(int j=xchar-charspace+DIFF; j<xchar+charspace-DIFF; j++)
@@ -284,38 +561,60 @@ void processDoors(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
 			{
 				if(gamemap[i+pom[k]][j+pom[k+1]]=='D')
 				{
-					double SIZE=0.8;
-					vrec[0]=-SIZE;
-					vrec[1]=SIZE;
-					vrec[5]=-SIZE;
-					vrec[6]=-SIZE;
-					vrec[10]=SIZE;
-					vrec[11]=-SIZE;
-					vrec[15]=SIZE;
-					vrec[16]=SIZE;
-					
-					glBindBuffer(GL_ARRAY_BUFFER, VBO);
-					glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
-					glBindVertexArray(VAO);
-					int vertexColorLocation = glGetUniformLocation(shaderProgramNoTex, "ourColor");
-					glUseProgram(shaderProgramNoTex);
-					glUniform4f(vertexColorLocation, 0.0, 1.0, 1.0, 1.0);
-					glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-					
-					if(go_quest(VAO, VBO, SIZE))
-					{
-						destroy_doors(i+pom[k], j+pom[k+1]);
-					}
-					for(int i=1; i<8; i++)
-					{
-						if(button_machine(window, i))
-						{
-							swap_quest(i-1);
-						}
-					}
+					activedoorsx=i+pom[k];
+					activedoorsy=j+pom[k+1];
+					return 1;
 				}
 			}
 		}
+	}
+	return 0;
+}
+void processDoors(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
+{		
+	if(check_doors_near_you())
+	{	
+		if(button_machine(window, 0))
+		{
+			if(questshow)
+				questshow=0;
+			else
+				questshow=1;
+		}
+		if(questshow)
+		{
+			double SIZE=0.8;
+			vrec[0]=-SIZE;
+			vrec[1]=SIZE;
+			vrec[5]=-SIZE;
+			vrec[6]=-SIZE;
+			vrec[10]=SIZE;
+			vrec[11]=-SIZE;
+			vrec[15]=SIZE;
+			vrec[16]=SIZE;
+		
+			glBindBuffer(GL_ARRAY_BUFFER, VBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
+			glBindVertexArray(VAO);
+			glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 18);
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		
+			if(go_quest(VAO, VBO, SIZE-0.1))
+			{
+				destroy_doors(activedoorsx, activedoorsy);
+			}
+			for(int i=1; i<7; i++)
+			{
+				if(button_machine(window, i))
+				{
+					swap_quest(i-1);
+				}
+			}
+		}
+	}
+	else
+	{
+		questshow=0;
 	}
 }
 bool check_quest()
@@ -368,7 +667,7 @@ bool go_quest(unsigned int VAO, unsigned int VBO, double size)
 		set_quest();
 		return 1;
 	}
-
+	
 	double F=0.05, FIELD=2*size/7;
 	
 	glUseProgram(shaderProgram);
@@ -736,8 +1035,6 @@ void draw_map(unsigned int VAO, unsigned int VBO)
 void processInput(GLFWwindow *window, double MOVE, unsigned int VAO, unsigned int VBO)
 {
 	float F=charspace/part, POSX=(xchar-gamex)/(part), POSY=(ychar-gamey)/(part);
-	if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
 	if(glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
 	{
 		draw_map(VAO, VBO);
