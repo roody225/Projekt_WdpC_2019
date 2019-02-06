@@ -14,8 +14,8 @@ unsigned int rec[]={
 };
 int pom[8]={-1, 0, 1, 0, 0, -1, 0, 1};
 bool buttons[20], questshow, controlsshow;
-const int part=10, MAPSIZE=1005;
-double camx=-1.0, camy=1.0, xchar, ychar, charmove=1.0/part, charspace=1.2, enemyspace=1.5, checkpointspace=1.0, boxspace=1.0, holespace=1.0;
+const int part=9, MAPSIZE=1005;
+double camx=-1.0, camy=1.0, xchar, ychar, charmove=1.0/part, charspace=1.19, enemyspace=1.49, checkpointspace=0.99, boxspace=0.99, holespace=1.02;
 int mapn, mapm, gamex, gamey, posx=0, posy=0, enemies=0, checkpoints=0, activecheckpoint, boxes=0, holes=0, holesfilled=0, questnr=3, activedoorsx, activedoorsy, mainmenushow=1, pauseshow=0;
 unsigned int shaderProgram, shaderProgramNoTex;
 char gamemap[MAPSIZE][MAPSIZE];
@@ -26,7 +26,7 @@ double box[1005][2];
 double hole[1005][2];
 double holefilled[1005][2];
 bool visited[MAPSIZE][MAPSIZE];
-int quest[105];
+int quest[105][8];
 
 double camxc=-1.0, camyc=1.0, xcharc, ycharc;
 int gamexc, gameyc, posxc=0, posyc=0, boxesc=0, holesc=0, holesfilledc=0, questnrc=0;
@@ -185,6 +185,9 @@ int main()
 	glActiveTexture(GL_TEXTURE27);
 	load_texture("../pics/save.jpg");
 		
+	glActiveTexture(GL_TEXTURE28);
+	load_texture("../pics/nosavedgame.jpg");
+	
 	while(!glfwWindowShouldClose(window))
 	{	
 		glUseProgram(shaderProgram);
@@ -232,7 +235,6 @@ int main()
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
-	
 	glfwTerminate();
 	return 0;
 }
@@ -292,12 +294,27 @@ void new_game()
 			}
 		}
 	}
-	set_checkpoint();
 	set_quest();
+	set_checkpoint();
 	map.close();
 }
 void processMainMenu(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
 {
+	vrec[0]=-1.0;
+	vrec[1]=1.0;
+	vrec[5]=-1.0;
+	vrec[6]=-1.0;
+	vrec[10]=1.0;
+	vrec[11]=-1.0;
+	vrec[15]=1.0;
+	vrec[16]=1.0;
+	
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
+	glBindVertexArray(VAO);
+	glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 21+mainmenushow+2*(int)controlsshow);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	
 	if(button_machine(window, 8))
 	{
 		mainmenushow--;
@@ -317,6 +334,30 @@ void processMainMenu(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
 			mainmenushow=0;
 			new_game();
 		}
+		if(mainmenushow==2)
+		{
+			if(load_game())
+				mainmenushow=0;
+			else
+			{
+				vrec[0]=-0.6;
+				vrec[1]=0.3;
+				vrec[5]=-0.6;
+				vrec[6]=-0.3;
+				vrec[10]=0.6;
+				vrec[11]=-0.3;
+				vrec[15]=0.6;
+				vrec[16]=0.3;
+				glBindBuffer(GL_ARRAY_BUFFER, VBO);
+				glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
+				glBindVertexArray(VAO);
+				glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 28);
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+				glfwSwapBuffers(window);
+				double pm=glfwGetTime();
+				while(glfwGetTime()-pm<0.8){};
+			}
+		}
 		if(mainmenushow==4)
 		{
 			glfwSetWindowShouldClose(window, true);
@@ -325,16 +366,14 @@ void processMainMenu(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
 		{
 			controlsshow=1;
 		}
-		if(mainmenushow==2)
-		{
-			if(load_game())
-				mainmenushow=0;
-		}
 	}
-	if(controlsshow && button_machine(window, 11))
+	if(controlsshow && button_machine(window, 7))
 	{
 		controlsshow=0;
 	}
+}
+void processPause(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
+{	
 	vrec[0]=-1.0;
 	vrec[1]=1.0;
 	vrec[5]=-1.0;
@@ -347,11 +386,9 @@ void processMainMenu(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
 	glBindVertexArray(VAO);
-	glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 21+mainmenushow+2*(int)controlsshow);
+	glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 18+pauseshow);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-}
-void processPause(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
-{
+	
 	if(button_machine(window, 8))
 	{
 		pauseshow--;
@@ -378,43 +415,27 @@ void processPause(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
 		}
 		if(pauseshow==2)
 		{
-			flag=1;
-			save_game();			
+			vrec[0]=-0.6;
+			vrec[1]=0.3;
+			vrec[5]=-0.6;
+			vrec[6]=-0.3;
+			vrec[10]=0.6;
+			vrec[11]=-0.3;
+			vrec[15]=0.6;
+			vrec[16]=0.3;
+			glBindBuffer(GL_ARRAY_BUFFER, VBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
+			glBindVertexArray(VAO);
+			glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 27);
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+			glfwSwapBuffers(window);
+			double pm=glfwGetTime();
+			while(glfwGetTime()-pm<0.8){}
+			save_game();
 		}
 	}
-	vrec[0]=-1.0;
-	vrec[1]=1.0;
-	vrec[5]=-1.0;
-	vrec[6]=-1.0;
-	vrec[10]=1.0;
-	vrec[11]=-1.0;
-	vrec[15]=1.0;
-	vrec[16]=1.0;
-	
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
-	glBindVertexArray(VAO);
-	glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 18+pauseshow);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-	if(flag)
-	{
-		vrec[0]=-0.6;
-		vrec[1]=0.3;
-		vrec[5]=-0.6;
-		vrec[6]=-0.3;
-		vrec[10]=0.6;
-		vrec[11]=-0.3;
-		vrec[15]=0.6;
-		vrec[16]=0.3;
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
-		glBindVertexArray(VAO);
-		glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 27);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		glfwSwapBuffers(window);
-		double pm=glfwGetTime();
-		while(glfwGetTime()-pm<0.8){}
-	}
+	if(button_machine(window, 7))
+		pauseshow=0;
 }
 void save_game()
 {
@@ -451,10 +472,47 @@ void save_game()
 	{
 		save<<holefilled[i][0]<<" "<<holefilled[i][1]<<"\n";
 	}
-	for(int i=0; i<questnr; i++)
+	int pom=0, pomi=0, pomj=0;
+	while(pom<questnr)
 	{
-		save<<quest[i]<<" ";
+		if(pomj>6-pomi)
+		{
+			pomi++;
+			pomj=0;
+		}
+		save<<quest[pomi][pomj]<<" ";
+		pom++;
+		pomj++;
 	}
+	save<<"\n\n";
+	save<<gamexc<<" "<<gameyc<<"\n";
+	save<<camxc<<" "<<camyc<<" "<<xcharc<<" "<<ycharc<<" "<<posxc<<" "<<posyc<<"\n";
+	save<<boxesc<<" "<<holesc<<" "<<holesfilledc<<" "<<questnrc<<"\n";
+	for(int i=0; i<enemies; i++)
+	{
+		save<<enemyc[i][0]<<" "<<enemyc[i][1]<<" "<<enemydirc[i]<<"\n";
+	}
+	for(int i=0; i<boxesc; i++)
+	{
+		save<<boxc[i][0]<<" "<<boxc[i][1]<<"\n";
+	}
+	for(int i=0; i<holesc; i++)
+	{
+		save<<holec[i][0]<<" "<<holec[i][1]<<"\n";
+	}
+	for(int i=0; i<holesfilledc; i++)
+	{
+		save<<holefilledc[i][0]<<" "<<holefilledc[i][1]<<"\n";
+	}
+	for(int i=0; i<mapn; i++)
+	{
+		for(int j=0; j<mapm; j++)
+		{
+			save<<gamemapc[i][j];
+		}
+		save<<"\n";
+	}
+	save.close();
 }
 void destroy_doors(int a, int b)
 {
@@ -470,13 +528,11 @@ bool load_game()
 {
 	ifstream save;
 	save.open("../pics/savedgame.txt");
-	int pom;
-	save>>pom;
-	if(mapm==EOF)
+	save>>mapm;
+	if(mapm==0)
 	{
 		return 0;
 	}
-	mapm=pom;
 	save>>mapn>>gamex>>gamey;
 	for(int i=0; i<mapn; i++)
 	{
@@ -507,20 +563,68 @@ bool load_game()
 	{
 		save>>holefilled[i][0]>>holefilled[i][1];
 	}
-	for(int i=0; i<questnr; i++)
+	int pom=0, pomi=0, pomj=0;
+	while(pom<questnr)
 	{
-		save>>quest[i];
+		if(pomj>6-pomi)
+		{
+			pomi++;
+			pomj=0;
+		}
+		save>>quest[pomi][pomj];
+		pom++;
+		pomj++;
 	}
+	save>>gamexc>>gameyc;
+	save>>camxc>>camyc>>xcharc>>ycharc>>posxc>>posyc;
+	save>>boxesc>>holesc>>holesfilledc>>questnrc;
+	for(int i=0; i<enemies; i++)
+	{
+		save>>enemyc[i][0]>>enemyc[i][1]>>enemydirc[i];
+	}
+	for(int i=0; i<boxesc; i++)
+	{
+		save>>boxc[i][0]>>boxc[i][1];
+	}
+	for(int i=0; i<holesc; i++)
+	{
+		save>>holec[i][0]>>holec[i][1];
+	}
+	for(int i=0; i<holesfilledc; i++)
+	{
+		save>>holefilledc[i][0]>>holefilledc[i][1];
+	}
+	for(int i=0; i<mapn; i++)
+	{
+		for(int j=0; j<mapm; j++)
+		{
+			save>>gamemapc[i][j];
+		}
+	}
+	save.close();
 	return 1;
 }
 void swap_quest(int a)
 {
-	for(int i=a; i<questnr-1; i+=7)
+	int pom=0, pomi=0, pomj=0;
+	while(pom<questnr-1)
 	{
-		int pom=quest[i];
-		quest[i]=quest[i+1];
-		quest[i+1]=pom;
-	}	
+		if(pomj>5-pomi)
+		{
+			pomi++;
+			pom++;
+			pomj=0;
+			continue;
+		}
+		if(pomj==a)
+		{
+			int pom=quest[pomi][pomj];
+			quest[pomi][pomj]=quest[pomi][pomj+1];
+			quest[pomi][pomj+1]=pom;
+		}
+		pomj++;
+		pom++;
+	}
 }
 bool button_machine(GLFWwindow *window, int a)
 {
@@ -531,7 +635,6 @@ bool button_machine(GLFWwindow *window, int a)
 		case 8: key=GLFW_KEY_UP; break;
 		case 9: key=GLFW_KEY_DOWN; break;
 		case 10: key=GLFW_KEY_ENTER; break;
-		case 11: key=GLFW_KEY_ESCAPE; break;
 	}
 	if(!buttons[a])
 	{
@@ -598,7 +701,6 @@ void processDoors(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
 			glBindVertexArray(VAO);
 			glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 18);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		
 			if(go_quest(VAO, VBO, SIZE-0.1))
 			{
 				destroy_doors(activedoorsx, activedoorsy);
@@ -619,43 +721,63 @@ void processDoors(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
 }
 bool check_quest()
 {
-	bool flag=true;
-	for(int i=0; i<questnr && flag; i+=7)
+	int pom=0, pomi=0, pomj=0;
+	while(pom<questnr-1)
 	{
-		for(int j=i; j<min(questnr, i+7)-1; j++)
+		if(pomj>5-pomi)
 		{
-			if(quest[j]>quest[j+1])
-			{
-				flag=false;
-				break;
-			}
+			pomi++;
+			pomj=0;
+			pom++;
+			continue;
 		}
+		if(quest[pomi][pomj]>quest[pomi][pomj+1])
+			return 0;
+		pom++;
+		pomj++;
 	}
-	return flag;
+	return 1;
 }
 void set_quest()
 {
-	questnr++;
-	if(questnr%7==1)
+	if(questnr<27)
+		questnr++;
+	int pom=0, pomi=0, pomj=0;
+	while(pom<questnr)
 	{
-		questnr+=2;
-	}
-	for(int i=0; i<questnr; i+=7)
-	{
-		for(int j=i; j<min(questnr, i+7); j++)
+		if(pomj>6-pomi)
 		{
-			quest[j]=(j%7)+1;
+			pomi++;
+			pomj=0;
 		}
+		quest[pomi][pomj]=pomj+1;
+		pom++;
+		pomj++;
 	}
 	do
 	{
-		for(int i=0; i<15; i++)
+		cerr<<questnr<<" ";
+		for(int i=0; i<20; i++)
 		{
-			int pom=glfwGetTime()*10000+i;
-			pom%=(questnr-1);
-			int pom0=quest[pom];
-			quest[pom]=quest[pom+1];
-			quest[pom+1]=pom0;
+			int pom=0, pomi=0, pomj=0;
+			while(pom<questnr-1)
+			{
+				if(pomj>5-pomi)
+				{
+					pomi++;
+					pomj=0;
+					pom++;
+					continue;
+				}
+				if(((int)(glfwGetTime()*10000))%2)
+				{
+					int pm=quest[pomi][pomj];
+					quest[pomi][pomj]=quest[pomi][pomj+1];
+					quest[pomi][pomj+1]=pm;
+				}
+				pom++;
+				pomj++;
+			}
 		}
 	}while(check_quest());
 }
@@ -667,32 +789,34 @@ bool go_quest(unsigned int VAO, unsigned int VBO, double size)
 		set_quest();
 		return 1;
 	}
-	
 	double F=0.05, FIELD=2*size/7;
 	
 	glUseProgram(shaderProgram);
-	
-	for(int i=0; i<questnr; i+=7)
+	int pom=0, pomi=0, pomj=0;
+	while(pom<questnr)
 	{
-		for(int j=i; j<min(questnr, i+7); j++)
+		if(pomj>6-pomi)
 		{
-			vrec[0]=-size+((j%7)*FIELD)+F;
-			vrec[1]=size-((i/7)*FIELD)-F;
-			vrec[5]=-size+((j%7)*FIELD)+F;
-			vrec[6]=size-(((i/7)+1)*FIELD)+F;
-			vrec[10]=-size+(((j%7)+1)*FIELD)-F;
-			vrec[11]=size-(((i/7)+1)*FIELD)+F;
-			vrec[15]=-size+(((j%7)+1)*FIELD)-F;
-			vrec[16]=size-((i/7)*FIELD)-F;
-			
-			glBindBuffer(GL_ARRAY_BUFFER, VBO);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
-			glBindVertexArray(VAO);
-			glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 10+quest[j]);
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+			pomi++;
+			pomj=0;
 		}
+		vrec[0]=-size+((pomj)*FIELD)+F;
+		vrec[1]=size-((pomi)*FIELD)-F;
+		vrec[5]=-size+((pomj)*FIELD)+F;
+		vrec[6]=size-(((pomi)+1)*FIELD)+F;
+		vrec[10]=-size+(((pomj)+1)*FIELD)-F;
+		vrec[11]=size-(((pomi)+1)*FIELD)+F;
+		vrec[15]=-size+(((pomj)+1)*FIELD)-F;
+		vrec[16]=size-((pomi)*FIELD)-F;
+				
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
+		glBindVertexArray(VAO);
+		glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 10+quest[pomi][pomj]);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		pom++;
+		pomj++;
 	}
-
 	return 0;
 }
 void processHoles(unsigned int VAO, unsigned int VBO)
@@ -875,7 +999,8 @@ void return_to_checkpoint()
 	camx=camxc, camy=camyc, xchar=xcharc, ychar=ycharc;
 	gamex=gamexc, gamey=gameyc, posx=posxc, posy=posyc;
 	boxes=boxesc, holes=holesc, holesfilled=holesfilledc;
-	questnr=questnrc;
+	questnr=questnrc-1;
+	set_quest();
 	for(int i=0; i<mapn; i++)
 	{
 		for(int j=0; j<mapm; j++)
