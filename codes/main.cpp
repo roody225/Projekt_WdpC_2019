@@ -14,8 +14,8 @@ unsigned int rec[]={
 };
 int pom[8]={-1, 0, 1, 0, 0, -1, 0, 1};
 bool buttons[20], questshow, controlsshow;
-const int part=9, MAPSIZE=1005;
-double camx=-1.0, camy=1.0, xchar, ychar, charmove=1.0/part, charspace=1.19, enemyspace=1.49, checkpointspace=0.99, boxspace=0.99, holespace=1.02;
+const int part=10, MAPSIZE=1005;
+double camx=-1.0, camy=1.0, xchar, ychar, charmove=1.0/part, charspace=1.19, enemyspace=1.39, checkpointspace=1.0, boxspace=0.99, holespace=1.02, endx, endy, endspace=1.5;
 int mapn, mapm, gamex, gamey, posx=0, posy=0, enemies=0, checkpoints=0, activecheckpoint, boxes=0, holes=0, holesfilled=0, questnr=3, activedoorsx, activedoorsy, mainmenushow=1, pauseshow=0;
 unsigned int shaderProgram, shaderProgramNoTex;
 char gamemap[MAPSIZE][MAPSIZE];
@@ -71,6 +71,7 @@ void processMainMenu(unsigned int VAO, unsigned int VBO, GLFWwindow *window);
 void new_game();
 void save_game();
 bool load_game();
+void processEndGame(unsigned int VAO, unsigned int VBO, GLFWwindow *window);
 
 int main()
 {
@@ -188,6 +189,12 @@ int main()
 	glActiveTexture(GL_TEXTURE28);
 	load_texture("../pics/nosavedgame.jpg");
 	
+	glActiveTexture(GL_TEXTURE29);
+	load_texture("../pics/endgame.jpg");
+	
+	glActiveTexture(GL_TEXTURE30);
+	load_texture("../pics/thisistheend.jpg");
+	
 	while(!glfwWindowShouldClose(window))
 	{	
 		glUseProgram(shaderProgram);
@@ -219,10 +226,12 @@ int main()
 				back_to_checkpoint(VAO_rec, VBO_rec, window);
 			}
 		
+			processEndGame(VAO_rec, VBO_rec, window);			
+			
 			print_object('C', camx, camy, xchar, ychar, VAO_rec, VBO_rec, charspace);
 
 			processDoors(VAO_rec, VBO_rec, window);	
-		
+			
 			processInput(window, charmove, VAO_rec, VBO_rec);
 			
 			if(button_machine(window, 7))
@@ -238,6 +247,36 @@ int main()
 	glfwTerminate();
 	return 0;
 }
+void processEndGame(unsigned int VAO, unsigned int VBO, GLFWwindow *window)
+{
+	if(visible(endx, endy, endspace))
+	{
+		print_object('e', camx, camy, endx, endy, VAO, VBO, endspace);
+	}
+	if(dynamic_colision(endx, endy, 0, xchar, ychar, charspace))
+	{
+		vrec[0]=-1.0;
+		vrec[1]=1.0;
+		vrec[5]=-1.0;
+		vrec[6]=-1.0;
+		vrec[10]=1.0;
+		vrec[11]=-1.0;
+		vrec[15]=1.0;
+		vrec[16]=1.0;
+		
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_STATIC_DRAW);
+		glBindVertexArray(VAO);
+		glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 30);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		
+		glfwSwapBuffers(window);
+	
+		double time=glfwGetTime();
+		while(glfwGetTime()-time<4){}
+		mainmenushow=1;
+	}
+}
 void new_game()
 {
 	enemies=0, boxes=0, holes=0, holesfilled=0, checkpoints=0, questnr=3;
@@ -249,7 +288,7 @@ void new_game()
 		}
 	}
 	ifstream map;
-	map.open("../pics/test_map.txt");
+	map.open("../pics/map.txt");
 	map>>mapm>>mapn>>gamex>>gamey;
 	for(int i=0; i<mapn; i++)
 	{
@@ -260,37 +299,42 @@ void new_game()
 			{
 				if(gamemap[i][j]=='C')
 				{
-					xchar=j, ychar=i;
+					xchar=0.5+j, ychar=0.5+i;
 					activecheckpoint=checkpoints;
 				}
-				checkpoint[checkpoints][0]=j;
-				checkpoint[checkpoints][1]=i;
+				checkpoint[checkpoints][0]=0.5+j;
+				checkpoint[checkpoints][1]=0.5+i;
 				checkpoints++;
 			}
 			if(gamemap[i][j]=='E')
 			{
-				enemy[enemies][0]=j;
-				enemy[enemies][1]=i;
+				enemy[enemies][0]=0.5+j;
+				enemy[enemies][1]=0.5+i;
 				enemydir[enemies]=0;
 				enemies++;
 			}
 			if(gamemap[i][j]=='B')
 			{
-				box[boxes][0]=j;
-				box[boxes][1]=i;
+				box[boxes][0]=0.5+j;
+				box[boxes][1]=0.5+i;
 				boxes++;
 			}
 			if(gamemap[i][j]=='H')
 			{
-				hole[holes][0]=j;
-				hole[holes][1]=i;
+				hole[holes][0]=0.5+j;
+				hole[holes][1]=0.5+i;
 				holes++;
 			}
 			if(gamemap[i][j]=='h')
 			{
-				holefilled[holesfilled][0]=j;
-				holefilled[holesfilled][1]=i;
+				holefilled[holesfilled][0]=0.5+j;
+				holefilled[holesfilled][1]=0.5+i;
 				holesfilled++;
+			}
+			if(gamemap[i][j]=='e')
+			{
+				endx=0.5+j;
+				endy=0.5+i;
 			}
 		}
 	}
@@ -450,7 +494,7 @@ void save_game()
 		}
 		save<<"\n";
 	}
-	save<<camx<<" "<<camy<<" "<<xchar<<" "<<ychar<<" "<<posx<<" "<<posy<<"\n";
+	save<<camx<<" "<<camy<<" "<<xchar<<" "<<ychar<<" "<<posx<<" "<<posy<<" "<<endx<<" "<<endy<<"\n";
 	save<<enemies<<" "<<checkpoints<<" "<<activecheckpoint<<" "<<boxes<<" "<<holes<<" "<<holesfilled<<" "<<questnr<<"\n";
 	for(int i=0; i<enemies; i++)
 	{
@@ -512,6 +556,14 @@ void save_game()
 		}
 		save<<"\n";
 	}
+	for(int i=0; i<mapn; i++)
+	{
+		for(int j=0; j<mapm; j++)
+		{
+			save<<visited[i][j]<<" ";
+		}
+		save<<"\n";
+	}
 	save.close();
 }
 void destroy_doors(int a, int b)
@@ -541,7 +593,7 @@ bool load_game()
 			save>>gamemap[i][j];
 		}
 	}
-	save>>camx>>camy>>xchar>>ychar>>posx>>posy;
+	save>>camx>>camy>>xchar>>ychar>>posx>>posy>>endx>>endy;
 	save>>enemies>>checkpoints>>activecheckpoint>>boxes>>holes>>holesfilled>>questnr;
 	for(int i=0; i<enemies; i++)
 	{
@@ -599,6 +651,13 @@ bool load_game()
 		for(int j=0; j<mapm; j++)
 		{
 			save>>gamemapc[i][j];
+		}
+	}
+	for(int i=0; i<mapn; i++)
+	{
+		for(int j=0; j<mapm; j++)
+		{
+			save>>visited[i][j];
 		}
 	}
 	save.close();
@@ -756,7 +815,6 @@ void set_quest()
 	}
 	do
 	{
-		cerr<<questnr<<" ";
 		for(int i=0; i<20; i++)
 		{
 			int pom=0, pomi=0, pomj=0;
@@ -1080,6 +1138,8 @@ void print_object(char z, float x, float y, float posx, float posy, unsigned int
 		glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 9);
 	if(z=='h')
 		glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 10);
+	if(z=='e')
+		glUniform1i(glGetUniformLocation(shaderProgram, "tex"), 29);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vrec), vrec, GL_DYNAMIC_DRAW);
 	glBindVertexArray(VAO);
@@ -1311,7 +1371,6 @@ void cam_up()
 			posy=part-1;
 		}
 		camy=1.0+((float)posy*(F*F));
-		//printf("%f %d.%d\n", camy, gamey, posy);
 	}
 }
 void cam_down()
@@ -1326,7 +1385,6 @@ void cam_down()
 			posy=0;
 		}
 		camy=1.0+((float)posy*(F*F));
-		//printf("%f %d.%d\n", camy, gamey, posy);
 	}
 }
 void cam_right()
@@ -1341,7 +1399,6 @@ void cam_right()
 			posx=0;
 		}
 		camx=-1.0-((float)posx*(F*F));
-		//printf("%f %d.%d\n", camx, gamex, posx);
 	}
 }
 void cam_left()
@@ -1356,7 +1413,6 @@ void cam_left()
 			posx=part-1;
 		}
 		camx=-1.0-((float)posx*(F*F));
-		//printf("%f %d.%d\n", camx, gamex, posx);
 	}
 }
 double abs(double a)
