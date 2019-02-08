@@ -1,0 +1,90 @@
+Projekt na przedmiot Kurs: Wstęp do programowania w języku C.
+
+Andrzej Tkaczyk
+
+Uniwersytet Wrocławski 08.02.2019
+
+tytuł: Kamienne Więzienie.
+
+#krótki opis
+Kamienne Więzienie to gra w 2D z widokiem z góry. Polega na opuszczeniu labiryntu omijając przeciwników, torując sobie drogę przy pomocy skrzynek (wrzucająć je do dziur blokujących przejścia), likwidując przeszkody, które również blokują przejścia (rozwiązując mini-zagadkę w terminalu przy każdej przeszkodzie).
+
+Projekt został wykonany przy pomocy biblioteki graficznej OpenGL, w języku C (pomimo rozszerzenia .cpp z języka C++ wykorzystywane są jedynie obsługa plików i strumienie wejścia oraz wyjścia).
+
+Całość zawiera moduły: draw.h; draw.cpp; main.cpp;
+oraz pliki: map.txt - mapa gry; savedgame.txt - zapisana gra;
+
+draw.h - pliki nagłówkowe niezbędnych bibliotek oraz nagłówki funkcji draw.cpp.
+
+draw.cpp - funkcje inicjalizujące różne działania biblioteki OpenGL oraz kody źródłowe shaderów (podprogramów rysujących).
+
+	void framebuffer_size_callback(GLFWwindow* window, int width, int height) - funkcja sterująca zmianą wymiarów okna.
+	GLFWwindow* my_window_init() - funkcja zwraca wskaźnik na nowo stworzone okno.
+	unsigned int create_shaders(int a) - funkcja zwraca identyfikator skompilowanego shadera.
+	void load_texture(const char *path) - funkcja wczytująca teksturę z pliku.
+	
+main.cpp - Preprocessing (inicjalizacja okna, skompilowanie shaderów, wczytanie tekstur), struktury danych przechowujące informacje o wszystkich obiektach w grze, pętla główna gry, funkcje związanie z funkcjonalnościami gry.
+
+	float vrec[]; unsigned int rec[] - tablice niezbędne do rysowania prostokąta.
+	int pom[8]={-1, 0, 1, 0, 0, -1, 0, 1}; - tablica do iteracji z sąsiadującymi polami na mapie 2D.
+	bool buttons[20] - tablica maszyny stanów przycisków.
+	bool questshow, controlsshow; int mainmenushow=1, pauseshow=0; - zmienne mówiące czy panele zagadki, instrukcji, menu, pauzy są aktywne.
+	const int part=10, MAPSIZE=1005; - podział okna na pola oraz maksymalna wielkość mapy.
+	double camx, camy; int gamex, gamey, posx, posy; - zmienne sterujące kamerą.
+	int mapn, mapm; char gamemap[MAPSIZE][MAPSIZE]; - informacje o mapie.
+	double xchar, ychar, charmove, charspace; - współrzędne, prędkość poruszania oraz wielkość postaci.
+	int enemies, enemydir[]; double enemyspace, enemy[][2]; - liczba, kierunek poruszania, wielkość, współrzędne przeciwników.
+	int checkpoints, activecheckpoint; double checkpoint[][2], checkpointspace; - liczba, aktywny, współrzędne, wielkość punktów pośrednich.
+	int boxes; double box[][2], boxspace; - liczba, współrzędne, wielkość skrzyń.
+	int holes, holesfilled; double holespace, hole[][2], holefilled[][2]; - liczba, wielkość, współrzędne dziur pustych i pełnych.
+	bool visited[MAPSIZE][MAPSIZE] - tablica informująca o odkrytym terenie.
+	int questnr, quest[][]; - poziom trudności zagadki oraz tablica z zagadką.
+	double endx, endy, endspace; - współrzędne i welkość pola końca gry.
+	int activedoorsx, activedoorsy; - współrzędne przeszkody przy której stoi postać.
+	{
+		double camxc=-1.0, camyc=1.0, xcharc, ycharc;
+		int gamexc, gameyc, posxc=0, posyc=0, boxesc=0, holesc=0, holesfilledc=0, questnrc=0;
+		char gamemapc[1005][1005];
+		double enemyc[1005][2];
+		int enemydirc[1005];
+		double boxc[1005][2];
+		double holec[1005][2];
+		double holefilledc[1005][2];
+	} - struktury przechowujące dane w punkcie pośrednim.
+	
+	double abs(double a); - funkcja zwracająca wartość bezwględną.
+	void processInput(GLFWwindow *window, double MOVE, unsigned int VAO, unsigned int VBO); - funkcja wczytująca wejście z klawiatury.
+	void print_field(char z, float x, float y, int a, int b, unsigned int VAO, unsigned int VBO); - funkcja rysująca jedno pole mapy.
+	void print_object(char z, float x, float y, float posx, float posy, unsigned int VAO, unsigned int VBO, double space); - funkcja rysująca obiekt.
+	void cam_up(); - funkjca przesuwająca kamerę w górę.
+	void cam_down(); - funkjca przesuwająca kamerę w dół.
+	void cam_right(); - funkjca przesuwająca kamerę w prawo.
+	void cam_left(); - funkjca przesuwająca kamerę w lewo.
+	bool check_colision(float x, float y, float space, int dir); - funkcja sprawdzająca kolizję ze ścianą.
+	bool processEnemies(unsigned int VAO, unsigned int VBO); - funkcja sterująca przeciwnikami (zwraca 1/0 gdy pprzeciwnik złapał/nie złapał postaci).
+	bool visible(double x, double y, double space); - funkcja sprawdzająca czy obiekt jest widoczny w oknie.
+	bool dynamic_colision(double a, double b, double c, double x, double y, double z); - funkcja sprawdzająca kolizję dwóch obiektów.
+	void back_to_checkpoint(unsigned int VAO, unsigned int VBO, GLFWwindow *window); - funkcja obsługująca śmierć postaci.
+	void set_checkpoint(); - funkcja zapisująca dane w punkcie pośrednim.
+	void return_to_checkpoint(); - funkcja przywracająca dane z punktu pośredniego.
+	void processCheckpoints(unsigned int VAO, unsigned int VBO); - funkcja obsługująca punkty pośrednie.
+	bool box_colision(int a, double MOVE); - funkcja sprawdzająca kolizję przeciwnika z jakąkolwiek skrzynią.
+	void processBoxes(unsigned int VAO, unsigned int VBO); - funkcja obsługująca skrzynie.
+	bool box_can_go(int a, double x, double y, double space); - funkcja sprawdzająca czy skrzynia po przesunięciu nie wywoła kolizji.
+	void draw_map(unsigned int VAO, unsigned int VBO); - funkcja rysująca minimapę.
+	void processHoles(unsigned int VAO, unsigned int VBO); - funkcja obsługująca dziury.
+	void processDoors(unsigned int VAO, unsigned int VBO, GLFWwindow *window); - funkcja obsługująca przeszkody.
+	bool go_quest(unsigned int VAO, unsigned int VBO, double size); - funkcja wyświetlająca i obsługująca zagadkę przy przeszkodzie.
+	bool check_quest(); - funkcja sprawdzająca czy zagadka jest rozwiązana.
+	void destroy_doors(int a, int b); - funkcja niszcząca przeszkodę.
+	void swap_quest(int a); - funkcja zamieniająca kolumny z liczbami w zagadce.
+	void set_quest(); - funkcja ustawiająca nową zagadkę.
+	bool button_machine(GLFWwindow *window, int a); - maszyna stanów dla przycisków.
+	bool check_doors_near_you(); - funkcja sprawdzająca czy postać stoi obok przeszkody.
+	void processPause(unsigned int VAO, unsigned int VBO, GLFWwindow *window); - funkcja obsługująza menu pauzy.
+	void processMainMenu(unsigned int VAO, unsigned int VBO, GLFWwindow *window); - funkcja obsługująca główne menu gry.
+	void new_game(); - funkcja inicjalizująca nową grę.
+	void save_game(); - funkcja zapisująca stan gry.
+	bool load_game(); - funkcja wczytująca zapisany stan gry (zwraca 0 gdy nie ma zapisanej gry).
+	void processEndGame(unsigned int VAO, unsigned int VBO, GLFWwindow *window); - funkca sprawdzająca czy gracz stanął na polu końca gry  i obsługująca koniec gry.
+
