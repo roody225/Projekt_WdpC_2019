@@ -15,7 +15,7 @@ unsigned int rec[]={
 int pom[8]={-1, 0, 1, 0, 0, -1, 0, 1};
 bool buttons[20], questshow, controlsshow;
 const int part=10, MAPSIZE=1005;
-double camx=-1.0, camy=1.0, xchar, ychar, charmove=1.0/part, charspace=1.19, enemyspace=1.39, checkpointspace=1.0, boxspace=0.99, holespace=1.02, endx, endy, endspace=1.5;
+double camx=-1.0, camy=1.0, xchar, ychar, charmove=1.0/part, charspace=1.19, enemyspace=1.39, checkpointspace=1.0, boxspace=0.99, holespace=1.00, endx, endy, endspace=1.5;
 int mapn, mapm, gamex, gamey, posx=0, posy=0, enemies=0, checkpoints=0, activecheckpoint, boxes=0, holes=0, holesfilled=0, questnr=3, activedoorsx, activedoorsy, mainmenushow=1, pauseshow=0;
 unsigned int shaderProgram, shaderProgramNoTex;
 char gamemap[MAPSIZE][MAPSIZE];
