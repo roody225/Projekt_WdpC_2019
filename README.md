@@ -2,8 +2,8 @@
 Kamienne Więzienie
 autor: Andrzej Tkaczyk
 
-aby pobrać bibliotekę OpenGl : sudo apt-get install libglfw-3dev
+aby pobrać bibliotekę OpenGl : sudo apt-get install libglfw3-dev
 
-wejdź do katalogu codes
+wejdź do katalogu src
 skompiluj poleceniem make
 uruchom program poleceniem ./projekt
